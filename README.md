@@ -116,7 +116,4 @@ Dieses Blueprint automatisiert die Bewässerung und das Crop Steering für den p
 
 ---
 
-**Viel Erfolg beim professionellen Medizinalcannabis-Anbau mit präziser, automatisierter Steuerung!**
 
----
-Antwort von Perplexity: pplx.ai/share
