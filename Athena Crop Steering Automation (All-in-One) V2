@@ -1,0 +1,159 @@
+blueprint:
+  name: Athena Crop Steering Automation (All-in-One)
+  description: |
+    Vollautomatisierte, substratspezifische Bewässerungssteuerung nach Athena Precision Irrigation Strategy.
+    Unterstützt verschiedene Topfgrößen und Substrate, EC-Management, Runoff-Zielwerte, Dryback-Phasen und Sicherheitsfunktionen.
+  domain: automation
+  input:
+    substrate_type:
+      name: Substrat/Topfgröße
+      selector:
+        select:
+          options:
+            - 4" Rockwool (Delta 6.5)
+            - 1 Gallon Coco (3,7L)
+            - 8L Coco Professional
+            - 11L Coco XXL
+            - Hugo 6" Slab
+    growth_stage:
+      name: Wachstumsphase
+      selector:
+        select:
+          options:
+            - Veg
+            - Stretch
+            - Flower Bulk
+            - Flower Finish
+    ec_sensor:
+      name: EC Sensor (Substrat)
+      selector:
+        entity:
+          domain: sensor
+    vwc_sensor:
+      name: VWC Sensor (Substratfeuchte)
+      selector:
+        entity:
+          domain: sensor
+    light_entity:
+      name: Lichtsteuerung (z.B. Grow-LED)
+      selector:
+        entity:
+          domain: switch
+    water_valve:
+      name: Bewässerungsventil
+      selector:
+        entity:
+          domain: valve
+    runoff_sensor:
+      name: Runoff Sensor (Abflussmessung)
+      selector:
+        entity:
+          domain: sensor
+    notification_device:
+      name: Benachrichtigungsgerät
+      selector:
+        device: {}
+
+variables:
+  # Shot- und Runoff-Parameter je nach Substratgröße
+  substrate_params: >
+    {% set params = {
+      "4\" Rockwool (Delta 6.5)": {"shot": 6.5, "veg_runoff": [56, 112], "gen_runoff": [7, 46], "veg_dryback": [30, 40], "gen_dryback": [40, 50], "ec_range": [3, 6]},
+      "1 Gallon Coco (3,7L)": {"shot": 37, "veg_runoff": [296, 592], "gen_runoff": [37, 259], "veg_dryback": [25, 35], "gen_dryback": [40, 50], "ec_range": [3.2, 10.5]},
+      "8L Coco Professional": {"shot": 80, "veg_runoff": [640, 1280], "gen_runoff": [80, 560], "veg_dryback": [30, 40], "gen_dryback": [45, 55], "ec_range": [3.5, 11.2]},
+      "11L Coco XXL": {"shot": 110, "veg_runoff": [880, 1760], "gen_runoff": [110, 770], "veg_dryback": [35, 45], "gen_dryback": [50, 60], "ec_range": [3.8, 12.0]},
+      "Hugo 6\" Slab": {"shot": 100, "veg_runoff": [280, 560], "gen_runoff": [35, 245], "veg_dryback": [30, 40], "gen_dryback": [40, 50], "ec_range": [3, 6]}
+    } %}
+    {{ params[substrate_type] }}
+
+  # Zielwerte je nach Phase
+  dryback_target: >
+    {% if growth_stage in ['Veg', 'Stretch'] %}
+      {{ substrate_params['veg_dryback'] }}
+    {% else %}
+      {{ substrate_params['gen_dryback'] }}
+    {% endif %}
+  ec_target: >
+    {{ substrate_params['ec_range'] }}
+
+trigger:
+  # Startet P1 90 Minuten nach Licht an
+  - platform: state
+    entity_id: !input light_entity
+    to: 'on'
+    for: '01:30:00'
+  # Notfall: EC zu hoch
+  - platform: numeric_state
+    entity_id: !input ec_sensor
+    above: "{{ substrate_params['ec_range'][1] }}"
+  # Notfall: Runoff zu niedrig nach P1
+  - platform: numeric_state
+    entity_id: !input runoff_sensor
+    below: "{{ substrate_params['gen_runoff'][0] }}"
+    for: '00:30:00'
+
+action:
+  - choose:
+      # Notfall EC zu hoch: Spülung
+      - conditions:
+          - condition: trigger
+            id: '1'
+        sequence:
+          - service: valve.open
+            target:
+              entity_id: !input water_valve
+          - delay: '00:05:00'
+          - service: valve.close
+            target:
+              entity_id: !input water_valve
+          - service: notify.notify
+            data:
+              message: "Achtung: EC-Wert über Maximum! Spülung durchgeführt."
+              target: !input notification_device
+
+      # P1-Phase: Sättigung bis Runoff-Ziel
+      - conditions:
+          - condition: trigger
+            id: '0'
+        sequence:
+          - repeat:
+              until:
+                - condition: numeric_state
+                  entity_id: !input runoff_sensor
+                  above: "{{ substrate_params['veg_runoff'][0] }}"
+              sequence:
+                - service: valve.open
+                  target:
+                    entity_id: !input water_valve
+                - delay:
+                    seconds: "{{ (substrate_params['shot'] / 100) | round(0) }}"
+                - service: valve.close
+                  target:
+                    entity_id: !input water_valve
+                - delay: '00:15:00'
+          - service: notify.notify
+            data:
+              message: "P1 abgeschlossen: Runoff-Ziel erreicht."
+              target: !input notification_device
+
+      # Notfall: Runoff zu niedrig nach P1
+      - conditions:
+          - condition: trigger
+            id: '2'
+        sequence:
+          - service: notify.notify
+            data:
+              message: "Warnung: Runoff nach P1 zu niedrig – bitte Shot-Volumen prüfen!"
+              target: !input notification_device
+
+  # P2/P3-Phasen: Tägliche Bewässerung nach Feuchte/Dryback
+  - service: script.crop_steering_maintenance
+    data:
+      substrate_type: !input substrate_type
+      growth_stage: !input growth_stage
+      vwc_sensor: !input vwc_sensor
+      water_valve: !input water_valve
+      dryback_target: "{{ dryback_target }}"
+      notification_device: !input notification_device
+
+mode: restart
