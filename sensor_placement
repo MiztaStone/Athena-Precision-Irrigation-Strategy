@@ -1,0 +1,23 @@
+Trockenphasensteuerung
+
+Vegetative Phase:
+
+3.7L: 25-35% Dryback
+
+8L: 30-40% Dryback
+
+11L: 35-45% Dryback
+
+
+Generative Phase:
+
+3.7L: 40-50% Dryback
+
+8L: 45-55% Dryback
+
+11L: 50-60% Dryback
+
+Topfgröße	  Sensorposition	          Messgenauigkeit
+3.7L	      5 cm unter Oberfläche	    ±1.5% VWC
+8L	        7 cm unter Oberfläche	    ±1.2% VWC
+11L         10 cm unter Oberfläche	  ±1.0% VWC
