@@ -1,0 +1,48 @@
+[
+    {
+        "id": "inject1",
+        "type": "inject",
+        "z": "flow1",
+        "name": "Start irrigation",
+        "props": [{ "p": "payload" }, { "p": "topic", "vt": "str" }],
+        "repeat": "",
+        "crontab": "0 6 * * *",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "start",
+        "payload": "",
+        "payloadType": "date",
+        "x": 100,
+        "y": 100,
+        "wires": [["function1"]]
+    },
+    {
+        "id": "function1",
+        "type": "function",
+        "z": "flow1",
+        "name": "Check moisture",
+        "func": "// Replace with real sensor reading\nvar moisture = msg.payload;\nvar threshold = 30; // percentage\nif (moisture < threshold) {\n    return msg; // low moisture, trigger irrigation\n} else {\n    return null;\n}",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 280,
+        "y": 100,
+        "wires": [["relay1"]]
+    },
+    {
+        "id": "relay1",
+        "type": "rpi-gpio out",
+        "z": "flow1",
+        "name": "Water Pump",
+        "pin": "11",
+        "set": true,
+        "level": "0",
+        "freq": "",
+        "out": "out",
+        "x": 470,
+        "y": 100,
+        "wires": []
+    }
+]

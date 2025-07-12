@@ -107,6 +107,14 @@ Dieses Blueprint automatisiert die Bewässerung und das Crop Steering für den p
 - **Integration weiterer Sensoren:** (z.B. Temperatur, Luftfeuchte, CO₂) für fortgeschrittenes Crop Steering möglich.
 - **Individuelle Anpassung:** Shot- und Runoff-Werte können an Sorten oder Bedingungen angepasst werden.
 
+### 🛠️ **Beispiel Node-RED-Flow**
+
+Im Ordner `node_red/` befindet sich die Datei `simple_irrigation_flow.json`. Sie
+enthält einen einfachen Bewässerungsablauf, der einen Feuchtigkeitssensor
+auswertet und bei Bedarf eine Wasserpumpe einschaltet. Der Flow kann in
+Node-RED über das Import-Menü geladen und an die eigenen Hardware-Gegebenheiten
+angepasst werden.
+
 ---
 
 ### 📚 **Support & Quellen**
